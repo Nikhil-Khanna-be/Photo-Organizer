@@ -28,10 +28,11 @@ class PhotoOrganizer:
         source = Path(image_path)
         destination = person_folder / source.name
 
-        shutil.copy2(
-            source,
-            destination
-        )
+        if not destination.exists():
+            shutil.copy2(
+                source,
+                destination
+            )
 
         return destination
 
@@ -43,11 +44,16 @@ class PhotoOrganizer:
         person_name
     ):
         person_folder = self.create_person_folder(person_name)
+        main_image_path = person_folder / "main_image.jpg"
 
+        # Don't replace the original main image.
+        if main_image_path.exists():
+            return main_image_path
+        
         x1, y1, x2, y2 = face.bbox.astype(int)
 
         height, width = image.shape[:2]
-
+        # Keep coordinates inside the image.
         x1 = max(0, x1)
         y1 = max(0, y1)
         x2 = min(width, x2)
@@ -55,7 +61,10 @@ class PhotoOrganizer:
 
         face_crop = image[y1:y2, x1:x2]
 
-        main_image_path = person_folder / "main_image.jpg"
+        if face_crop.size == 0:
+            raise ValueError(
+                f"Could not crop face for {person_name}"
+            )
 
         cv2.imwrite(
             str(main_image_path),
