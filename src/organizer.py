@@ -36,38 +36,95 @@ class PhotoOrganizer:
         return destination, True
 
 
-    def save_main_image(
-        self,
-        image,
-        face,
-        person_name
-    ):
-        person_folder = self.create_person_folder(person_name)
+    def save_main_image(self, image, face, person_name):
+        person_folder = self.create_person_folder(
+            person_name
+        )
+
         main_image_path = person_folder / "main_image.jpg"
 
-        # Don't replace the original main image.
         if main_image_path.exists():
             return main_image_path
-        
+
         x1, y1, x2, y2 = face.bbox.astype(int)
 
         height, width = image.shape[:2]
-        # Keep coordinates inside the image.
-        x1 = max(0, x1)
-        y1 = max(0, y1)
-        x2 = min(width, x2)
-        y2 = min(height, y2)
 
-        face_crop = image[y1:y2, x1:x2]
+        # Face center
+        center_x = (x1 + x2) // 2
+        center_y = (y1 + y2) // 2
+
+        # Face size
+        face_width = x2 - x1
+        face_height = y2 - y1
+
+        # Make the crop larger than the face.
+        crop_size = int(
+            max(face_width, face_height) * 2.0
+        )
+
+        half_size = crop_size // 2
+
+        crop_x1 = center_x - half_size
+        crop_y1 = center_y - half_size
+        crop_x2 = center_x + half_size
+        crop_y2 = center_y + half_size
+
+        # Keep crop inside image boundaries.
+        crop_x1 = max(0, crop_x1)
+        crop_y1 = max(0, crop_y1)
+        crop_x2 = min(width, crop_x2)
+        crop_y2 = min(height, crop_y2)
+
+        face_crop = image[
+            crop_y1:crop_y2,
+            crop_x1:crop_x2
+        ]
 
         if face_crop.size == 0:
             raise ValueError(
                 f"Could not crop face for {person_name}"
             )
 
+        # Resize to a consistent size.
+        main_image = cv2.resize(
+            face_crop,
+            (512, 512),
+            interpolation=cv2.INTER_CUBIC
+        )
+
         cv2.imwrite(
             str(main_image_path),
-            face_crop
+            main_image
         )
 
         return main_image_path
+
+    def rename_person_folder(
+        self,
+        old_name,
+        new_name
+    ):
+        old_folder = (
+            self.output_directory / old_name
+        )
+
+        new_folder = (
+            self.output_directory / new_name
+        )
+
+        if not old_folder.exists():
+            raise ValueError(
+                f"Person folder does not exist: "
+                f"{old_folder}"
+            )
+
+        if new_folder.exists():
+            raise ValueError(
+                f"Destination folder already exists: "
+                f"{new_folder}"
+            )
+
+        old_folder.rename(new_folder)
+
+        return new_folder

@@ -7,6 +7,7 @@ from insightface.app import FaceAnalysis
 from src.face_matcher import cosine_similarity
 from src.organizer import PhotoOrganizer
 from src.person_repository import PersonRepository
+from src.person_service import PersonService
 from src.photo_person_repository import PhotoPersonRepository
 from src.photo_repository import PhotoRepository
 
@@ -32,6 +33,9 @@ class PhotoProcessor:
         )
 
         self.person_repository = PersonRepository()
+        self.person_service = PersonService(
+            output_directory=output_directory
+        )
         self.photo_repository = PhotoRepository()
         self.photo_person_repository = (
             PhotoPersonRepository()
@@ -84,29 +88,24 @@ class PhotoProcessor:
             print("Could not load image.")
             return []
 
-        # ------------------------------------------
-        # 2. Detect faces
-        # ------------------------------------------
+        photo_id = self.photo_repository.create_photo(
+            image_path
+        )
+
+        print(f"Photo ID: {photo_id}")
 
         faces = self.face_app.get(image)
 
-        print(
-            f"Faces detected: {len(faces)}"
-        )
+        print(f"Faces detected: {len(faces)}")
 
         if not faces:
             print("No faces found.")
-            return []
 
-        # ------------------------------------------
-        # 3. Create/find photo record
-        # ------------------------------------------
-
-        photo_id = (
-            self.photo_repository.create_photo(
-                image_path
+            self.photo_repository.mark_processed(
+                photo_id
             )
-        )
+
+            return []
 
         print(
             f"Photo ID: {photo_id}"
@@ -156,15 +155,10 @@ class PhotoProcessor:
             # --------------------------------------
 
             if person is not None:
-
-                print(
-                    f"Matched: {person['name']}"
-                )
-
-                print(
-                    f"Similarity: "
-                    f"{similarity:.4f}"
-                )
+                print(f"Best match: {person['name']}")
+                print(f"Similarity: {similarity:.4f}")
+                print(f"Threshold: {self.threshold:.4f}")
+                print("Decision: MATCH")
 
                 person_id = person["id"]
 
@@ -187,34 +181,27 @@ class PhotoProcessor:
             # --------------------------------------
 
             else:
-
-                next_number = len(people) + 1
-
-                person_name = (
-                    f"Person_{next_number:03d}"
+                print(
+                    f"Best similarity: "
+                    f"{similarity:.4f}"
                 )
 
-                person_folder = (
-                    self.organizer.create_person_folder(
-                        person_name
+                print(
+                    f"Threshold: "
+                    f"{self.threshold:.4f}"
+                )
+
+                print("Decision: NEW PERSON")
+
+                person_data = (
+                    self.person_service.create_person(
+                        image=image,
+                        face=face
                     )
                 )
 
-                main_image_path = (
-                    self.organizer.save_main_image(
-                        image,
-                        face,
-                        person_name
-                    )
-                )
-
-                person_id = (
-                    self.person_repository.create_person(
-                        name=person_name,
-                        folder_path=person_folder,
-                        main_image_path=main_image_path
-                    )
-                )
+                person_id = person_data["id"]
+                person_name = person_data["name"]
 
                 self.person_repository.add_embedding(
                     person_id=person_id,
@@ -225,12 +212,12 @@ class PhotoProcessor:
                 person = {
                     "id": person_id,
                     "name": person_name,
-                    "folder_path": str(
-                        person_folder
-                    ),
-                    "main_image_path": str(
-                        main_image_path
-                    ),
+                    "folder_path": person_data[
+                        "folder_path"
+                    ],
+                    "main_image_path": person_data[
+                        "main_image_path"
+                    ],
                     "embeddings": [embedding]
                 }
 
@@ -243,7 +230,7 @@ class PhotoProcessor:
 
                 print(
                     f"Main image: "
-                    f"{main_image_path}"
+                    f"{person_data['main_image_path']}"
                 )
 
             # --------------------------------------
@@ -315,7 +302,7 @@ class PhotoProcessor:
 
         image_paths = sorted(
             path
-            for path in directory.iterdir()
+            for path in directory.rglob("*")
             if path.is_file()
             and path.suffix.lower()
             in image_extensions
@@ -336,15 +323,7 @@ class PhotoProcessor:
                 )
                 continue
 
-            photo_id = self.photo_repository.create_photo(
-                image_path
-            )
-
             self.process_photo(image_path)
-
-            self.photo_repository.mark_processed(
-                photo_id
-            )
 
             print(
                 f"Finished: {image_path}"

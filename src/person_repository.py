@@ -54,22 +54,31 @@ class PersonRepository:
 
     def create_person(
         self,
-        name,
         folder_path,
         main_image_path
     ):
         with Session(engine) as session:
             person = PersonModel(
-                name=name,
+                name="TEMP",
                 folder_path=str(folder_path),
                 main_image_path=str(main_image_path)
             )
 
             session.add(person)
+            session.flush()
+
+            person.name = (
+                f"Person_{person.id:03d}"
+            )
+
             session.commit()
 
-            return person.id
+            return {
+                "id": person.id,
+                "name": person.name
+            }
 
+        
     def add_embedding(
         self,
         person_id,
@@ -105,3 +114,108 @@ class PersonRepository:
             session.commit()
 
             return face_embedding.id
+
+
+    def create_person_record(self):
+        with Session(engine) as session:
+            person = PersonModel(
+                name="TEMP",
+                folder_path="",
+                main_image_path=None
+            )
+
+            session.add(person)
+            session.flush()
+
+            person.name = (
+                f"Person_{person.id:03d}"
+            )
+
+            session.commit()
+
+            return {
+                "id": person.id,
+                "name": person.name
+            }
+
+    def update_person_paths(
+        self,
+        person_id,
+        folder_path,
+        main_image_path
+    ):
+        with Session(engine) as session:
+            person = session.get(
+                PersonModel,
+                person_id
+            )
+
+            if person is None:
+                raise ValueError(
+                    f"Person {person_id} not found"
+                )
+
+            person.folder_path = str(
+                folder_path
+            )
+
+            person.main_image_path = str(
+                main_image_path
+            )
+
+            session.commit()
+
+
+    def rename_person(
+        self,
+        person_id,
+        new_name,
+        new_folder_path
+    ):
+        with Session(engine) as session:
+            person = session.get(
+                PersonModel,
+                person_id
+            )
+
+            if person is None:
+                raise ValueError(
+                    f"Person {person_id} not found"
+                )
+
+            existing_person = session.scalars(
+                select(PersonModel).where(
+                    PersonModel.name == new_name,
+                    PersonModel.id != person_id
+                )
+            ).first()
+
+            if existing_person:
+                raise ValueError(
+                    f"Person name already exists: "
+                    f"{new_name}"
+                )
+
+            person.name = new_name
+            person.folder_path = str(
+                new_folder_path
+            )
+
+            session.commit()
+
+    def person_name_exists(
+        self,
+        name,
+        exclude_person_id=None
+    ):
+        with Session(engine) as session:
+            query = select(PersonModel).where(
+                PersonModel.name == name
+            )
+
+            if exclude_person_id is not None:
+                query = query.where(
+                    PersonModel.id != exclude_person_id
+                )
+
+            return session.scalars(query).first() is not None

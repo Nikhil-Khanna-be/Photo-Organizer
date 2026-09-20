@@ -6,6 +6,7 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -76,6 +77,14 @@ class PhotoModel(Base):
 #face embedding table
 class FaceEmbeddingModel(Base):
     __tablename__ = "face_embeddings"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "person_id",
+            "photo_id",
+            name="uq_person_photo_embedding"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         Integer,

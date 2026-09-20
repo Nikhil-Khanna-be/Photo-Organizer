@@ -8,8 +8,8 @@ def main():
         output_directory="output"
     )
 
-    processor.process_photo(
-        "input/new_person.jpg"
+    processor.process_directory(
+        "input"
     )
 
 
