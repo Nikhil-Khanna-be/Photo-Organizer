@@ -9,10 +9,7 @@ def main():
     )
 
     processor.process_photo(
-        "input/p1_p1.jpg"
-    )
-    processor.process_photo(
-        "input/p1_p2.jpg"
+        "input/new_person.jpg"
     )
 
 

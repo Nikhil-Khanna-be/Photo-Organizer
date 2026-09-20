@@ -28,13 +28,12 @@ class PhotoOrganizer:
         source = Path(image_path)
         destination = person_folder / source.name
 
-        if not destination.exists():
-            shutil.copy2(
-                source,
-                destination
-            )
+        if destination.exists():
+            return destination, False
 
-        return destination
+        shutil.copy2(source, destination)
+
+        return destination, True
 
 
     def save_main_image(

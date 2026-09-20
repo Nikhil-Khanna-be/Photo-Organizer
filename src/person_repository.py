@@ -84,6 +84,17 @@ class PersonRepository:
         )
 
         with Session(engine) as session:
+
+            existing = session.scalars(
+                select(FaceEmbeddingModel).where(
+                    FaceEmbeddingModel.person_id == person_id,
+                    FaceEmbeddingModel.photo_id == photo_id
+                )
+            ).first()
+
+            if existing:
+                return existing.id
+
             face_embedding = FaceEmbeddingModel(
                 person_id=person_id,
                 photo_id=photo_id,
