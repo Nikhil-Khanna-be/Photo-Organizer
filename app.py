@@ -1,16 +1,17 @@
-from src.photo_processor import PhotoProcessor
+import sys
+
+from PySide6.QtWidgets import QApplication
+
+from src.gui.main_window import MainWindow
 
 
 def main():
+    app = QApplication(sys.argv)
 
-    processor = PhotoProcessor(
-        threshold=0.5,
-        output_directory="output"
-    )
+    window = MainWindow()
+    window.show()
 
-    processor.process_directory(
-        "input"
-    )
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

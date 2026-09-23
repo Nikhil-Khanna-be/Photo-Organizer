@@ -3,3 +3,4 @@ insightface
 mysql-connector-python
 sqlalchemy
 python-dotenv
+PySide6
