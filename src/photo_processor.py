@@ -279,7 +279,7 @@ class PhotoProcessor:
         )
 
 
-    def process_directory(self, directory):
+    def process_directory(self, directory,progress_callback=None):
         directory = Path(directory)
 
         if not directory.exists():
@@ -307,12 +307,16 @@ class PhotoProcessor:
             and path.suffix.lower()
             in image_extensions
         )
+        total = len(image_paths)
 
         print(
             f"\nFound {len(image_paths)} image(s)."
         )
 
-        for image_path in image_paths:
+        for index, image_path in enumerate(
+            image_paths,
+            start=1
+        ):
 
             if self.photo_repository.is_processed(
                 image_path
