@@ -307,28 +307,47 @@ class PhotoProcessor:
             and path.suffix.lower()
             in image_extensions
         )
+        
+        
+        
         total = len(image_paths)
+        processed = 0
+        skipped = 0
+        failed = 0
+
+        for index, image_path in enumerate(image_paths, start=1):
+            try:
+                if self.photo_repository.is_processed(image_path):
+                    skipped += 1
+                    print(f"Skipping already processed: {image_path}")
+                else:
+                    self.process_photo(image_path)
+                    processed += 1
+                    print(f"Finished: {image_path}")
+
+            except Exception as exc:
+                failed += 1
+                error_message = (
+                    f"Failed to process {image_path}: {exc}"
+                )
+                print(error_message)
+
+                with open("photo_errors.log", "a", encoding="utf-8") as log_file:
+                    log_file.write(error_message + "\n")
+
+            finally:
+                if progress_callback:
+                    progress_callback(
+                        index,
+                        total,
+                        image_path,
+                        processed,
+                        skipped,
+                        failed
+                    )
 
         print(
-            f"\nFound {len(image_paths)} image(s)."
+            f"Directory complete. Total: {total}, "
+            f"Processed: {processed}, Skipped: {skipped}, "
+            f"Failed: {failed}"
         )
-
-        for index, image_path in enumerate(
-            image_paths,
-            start=1
-        ):
-
-            if self.photo_repository.is_processed(
-                image_path
-            ):
-                print(
-                    f"\nSkipping already processed: "
-                    f"{image_path}"
-                )
-                continue
-
-            self.process_photo(image_path)
-
-            print(
-                f"Finished: {image_path}"
-            )

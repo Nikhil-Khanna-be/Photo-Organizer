@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QFileDialog,
     QPushButton,
+    QProgressBar,
 )
 
 from src.person_service import PersonService
@@ -43,6 +44,11 @@ class MainWindow(QMainWindow):
         self.load_people()
 
     def setup_ui(self):
+        self.status_label = QLabel("Ready")
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+
         central_widget = QWidget()
         main_layout = QVBoxLayout()
 
@@ -88,6 +94,8 @@ class MainWindow(QMainWindow):
         self.process_button.clicked.connect(
             self.process_photos
         )
+        main_layout.addWidget(self.status_label)
+        main_layout.addWidget(self.progress_bar)
 
         main_layout.addWidget(title)
         main_layout.addWidget(select_button)
@@ -216,6 +224,10 @@ class MainWindow(QMainWindow):
             self.selected_folder
         )
 
+        self.worker.progress.connect(
+            self.update_progress
+        )
+
         self.worker.moveToThread(
             self.thread
         )
@@ -249,22 +261,46 @@ class MainWindow(QMainWindow):
         )
 
         self.thread.start()
-
-
+    
+    
     def processing_finished(self):
-        print("Processing finished.")
-
+        self.progress_bar.setValue(100)
+        self.status_label.setText(
+            "Done! All photos have been processed."
+        )
         self.process_button.setEnabled(True)
-
         self.load_people()
+
+    
+    
+    def update_progress(
+        self,
+        current,
+        total,
+        image_path,
+        processed,
+        skipped,
+        failed
+    ):
+        percentage = round(current / total * 100) if total else 0
+        self.progress_bar.setValue(percentage)
+
+        self.status_label.setText(
+            f"Photo {current}/{total}: {Path(image_path).name}\n"
+            f"Processed: {processed} | "
+            f"Skipped: {skipped} | "
+            f"Failed: {failed}"
+        )
+
 
 
 
     def processing_error(self, message):
-        print(
-            f"Processing error: {message}"
-        )
+        self.status_label.setText("Processing failed.")
+        print(f"Error processing photos: {message}")
+        self.process_button.setEnabled(True)
 
+    
     def thread_finished(self):
         print("Worker thread finished.")
 
